@@ -1,0 +1,6 @@
+init_config:
+instances:
+  - snaplogic_url: "elastic.snaplogic.com"
+    orgname: "Test_Org"
+    basic_auth_user: "cool-user@example.com"
+    basic_auth_password: "passw0rd1"
