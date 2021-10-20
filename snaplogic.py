@@ -34,7 +34,7 @@ class SnaplogicTest(AgentCheck):
           metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
           tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
           if isinstance(stat_value, (str, float, int)) and stat_value != '':
-            self.gauge(metric=metric_string, value=stat_value, tags=tags)
+            self.gauge(name=metric_string, value=stat_value, tags=tags)
 
     for project_key, project_value in snaplogic_projects:
       for project in project_value["cc_info"]["running"]:
@@ -42,11 +42,11 @@ class SnaplogicTest(AgentCheck):
           metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
           tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
           if isinstance(stat_value, (str, float, int)) and stat_value != '':
-            self.gauge(metric=metric_string, value=stat_value, tags=tags)
+            self.gauge(name=metric_string, value=stat_value, tags=tags)
 
     for project_key, project_value in snaplogic_projects:
       for stat_name, stat_value in project_value["plex_info"].items():
         metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
         tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
         if isinstance(stat_value, (str, float)) and stat_value != '':
-          self.gauge(metric=metric_string, value=stat_value, tags=tags)
+          self.gauge(name=metric_string, value=stat_value, tags=tags)
