@@ -8,7 +8,6 @@ class SnaplogicTest(AgentCheck):
       if key not in instance:
         raise Exception("Config '{}' must be specified".format(key))
 
-
   def check(self, instances):
     self._validate_instance(instances)
 
@@ -29,24 +28,34 @@ class SnaplogicTest(AgentCheck):
     snaplogic_projects = data["response_map"].items()
 
     for project_key, project_value in snaplogic_projects:
+      project_tag = project_value["cc_info"]["label"]
       for project in project_value["cc_info"]["running"]:
-        for stat_name, stat_value in project["stats"].items():
-          metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
-          tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
-          if isinstance(stat_value, (str, float, int)) and stat_value != '':
-            self.gauge(name=metric_string, value=stat_value, tags=tags)
+        snaplogic_hostname_tag      = project["hostname"]
+    
+        stats_metrics = ["active_threads", "active_pipelines"]
+        stats_metric_kv = {}
+        for metric_name in stats_metrics:
+          metric_string = 'snaplogic.cc_info.{metric_name}'.format(metric_name = metric_name)
+          metric_value = project["stats"][metric_name]
+          stats_metric_kv[metric_string] = metric_value
+        
+        info_map_metrics = ["jvm_max_mem_size"]
+        info_map_metric_kv = {}
+        for metric_name in info_map_metrics:
+          metric_string = 'snaplogic.info_map.{metric_name}'.format(metric_name = metric_name)
+          metric_value = project["info_map"][metric_name]
+          info_map_metric_kv[metric_string] = metric_value
 
-    for project_key, project_value in snaplogic_projects:
-      for project in project_value["cc_info"]["running"]:
-        for stat_name, stat_value in project["info_map"].items():
-          metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
-          tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
-          if isinstance(stat_value, (str, float, int)) and stat_value != '':
-            self.gauge(name=metric_string, value=stat_value, tags=tags)
+        tags = [os_name_tag, project_tag, snaplogic_hostname_tag]
 
-    for project_key, project_value in snaplogic_projects:
-      for stat_name, stat_value in project_value["plex_info"].items():
-        metric_string = 'snaplogic.{stat_name}'.format(stat_name = stat_name)
-        tags = ['project:{project}'.format(project = project_value["cc_info"]["label"]),'snaplogic_hostname:{hostname}'.format(hostname = project["hostname"])]
-        if isinstance(stat_value, (str, float)) and stat_value != '':
-          self.gauge(name=metric_string, value=stat_value, tags=tags)
+        tags = [
+          'project:{project}'.format(project = project_tag),
+          'snaplogic_hostname:{hostname}'.format(hostname = snaplogic_hostname_tag)
+        ]
+
+        for key, value in info_map_metric_kv.items(): 
+          self.gauge(name=key, value=value, tags=tags)
+
+        for key, value in stats_metric_kv.items(): 
+          self.gauge(name=key, value=value, tags=tags)
+
