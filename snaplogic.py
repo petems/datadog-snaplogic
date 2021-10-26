@@ -1,4 +1,4 @@
-import urllib3, json
+import urllib3, json, datetime
 from checks import AgentCheck
 
 class SnaplogicTest(AgentCheck):
@@ -7,6 +7,13 @@ class SnaplogicTest(AgentCheck):
     for key in ['snaplogic_url', 'orgname', 'basic_auth_user', 'basic_auth_password']:
       if key not in instance:
         raise Exception("Config '{}' must be specified".format(key))
+
+  def dict_to_string_tags(self, dict_to_convert):
+    array_of_tag_strings = []
+    for key, value in dict_to_convert.items():
+      metric_string = '{key}:{value}'.format(key = key, value = value)
+      array_of_tag_strings.append(metric_string)
+    return array_of_tag_strings
 
   def check(self, instances):
     self._validate_instance(instances)
@@ -27,31 +34,41 @@ class SnaplogicTest(AgentCheck):
 
     snaplogic_projects = data["response_map"].items()
 
+    tags_list = {}
+
     for project_key, project_value in snaplogic_projects:
-      project_tag = project_value["cc_info"]["label"]
+      
+      project_tag                 = project_value["cc_info"]["label"]
+
       for project in project_value["cc_info"]["running"]:
-        snaplogic_hostname_tag      = project["hostname"]
+
+        tags_list["snaplogic_hostname"] = project["hostname"]
+        tags_list["snaplogic_availability"] = project["availability"]
+        tags_list["snaplogic_container_type"] = project["container_type"]
+        tags_list["snaplogic_create_time"] = project["create_time"]
+        tags_list["snaplogic_heartbeat"] = project["last_heartbeat"]
+        tags_list["snaplogic_version"] = project["version"]
+        tags_list["snaplogic_pkg_comment"] = project["pkg_comment"]
+
+        tags_list["snaplogic_os_name"] = project["info_map"]["os_name"]
+
+        tags_list["snaplogic_alive_since_string"] = datetime.datetime.fromtimestamp(project["stats"]["alive_since"]/1000.0).strftime('%Y-%m-%d %H:%M:%S')
     
-        stats_metrics = ["active_threads", "active_pipelines"]
+        stats_metrics = ["active_threads", "active_pipelines", "alive_since", "mem_used", "cpu_user", "max_file_descriptors", "cpu_util", "cc_mem_total", "mem_used_absolute", "disk_free", "disk_total"]
         stats_metric_kv = {}
         for metric_name in stats_metrics:
           metric_string = 'snaplogic.cc_info.{metric_name}'.format(metric_name = metric_name)
           metric_value = project["stats"][metric_name]
           stats_metric_kv[metric_string] = metric_value
         
-        info_map_metrics = ["jvm_max_mem_size"]
+        info_map_metrics = ["total_mem_size", "total_swap_size", "jvm_max_mem_size"]
         info_map_metric_kv = {}
         for metric_name in info_map_metrics:
           metric_string = 'snaplogic.info_map.{metric_name}'.format(metric_name = metric_name)
           metric_value = project["info_map"][metric_name]
           info_map_metric_kv[metric_string] = metric_value
 
-        tags = [os_name_tag, project_tag, snaplogic_hostname_tag]
-
-        tags = [
-          'project:{project}'.format(project = project_tag),
-          'snaplogic_hostname:{hostname}'.format(hostname = snaplogic_hostname_tag)
-        ]
+        tags = self.dict_to_string_tags(tags_list)
 
         for key, value in info_map_metric_kv.items(): 
           self.gauge(name=key, value=value, tags=tags)
