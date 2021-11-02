@@ -1,7 +1,17 @@
-import urllib3, json, datetime
+import urllib3, json, datetime, ssl
 from checks import AgentCheck
 
 class SnaplogicTest(AgentCheck):
+
+  def _disable_ssl_verification(self):
+    try:
+      _create_unverified_https_context = ssl._create_unverified_context
+    except AttributeError:
+      # Legacy Python that doesn't verify HTTPS certificates by default
+      pass
+    else:
+      # Handle target environment that doesn't support HTTPS verification
+      ssl._create_default_https_context = _create_unverified_https_context
 
   def _validate_instance(self, instance):
     for key in ['snaplogic_url', 'orgname', 'basic_auth_user', 'basic_auth_password']:
@@ -17,6 +27,10 @@ class SnaplogicTest(AgentCheck):
 
   def check(self, instances):
     self._validate_instance(instances)
+
+    # appears to be a temporary cert issue sometimes:
+    # https://community.snaplogic.com/t/snaplex-nodes-running-with-customer-signed-ssl-certificate-default-snaplogic-ssl-certificate-selected-and-returned-by-server-during-ssl-handshake/2675
+    self._disable_ssl_verification()
 
     http = urllib3.PoolManager()
 
