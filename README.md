@@ -64,6 +64,7 @@ Service Metadata:
     ------------------
       - instance #0 [OK]
       - Collected 1 metrics, 0 events & 0 service checks
-```
+
 
 Check has run only once, if some metrics are missing you can run the command again with the 'check_rate' argument appended at the end to see any other metrics if available.
+```
