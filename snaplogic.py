@@ -56,12 +56,8 @@ class SnaplogicTest(AgentCheck):
 
       tags_list = {}
 
-
-
-      for project_key, project_value in snaplogic_projects:
+      for _, project_value in snaplogic_projects:
         
-        project_tag                 = project_value["cc_info"]["label"]
-
         for project in project_value["cc_info"]["running"]:
 
           tags_list["snaplogic_hostname"] = project["hostname"]
@@ -142,6 +138,9 @@ class SnaplogicTest(AgentCheck):
 
       tags_list = {}
 
+      failing_pipelines = 0
+      successful_pipelines = 0
+
       for non_failed_state in non_failing_states:
 
         non_failed_state_url = full_url + "&state={non_failed_state}".format(non_failed_state=non_failed_state)
@@ -170,6 +169,8 @@ class SnaplogicTest(AgentCheck):
             'aggregation_key': pipeline_response["pipe_id"],
           })
 
+          successful_pipelines += 1
+
       for failed_state in failing_states:
 
         failed_state_url = full_url + "&state={failed_state}".format(failed_state=failed_state)
@@ -197,8 +198,14 @@ class SnaplogicTest(AgentCheck):
                 'msg_text': json.dumps(pipeline_response),
                 'aggregation_key': pipeline_response["pipe_id"],
           })
+
+          failing_pipelines += 1
   
+      self.gauge(name='snaplogic.runtime.failed_pipelines', value=failing_pipelines, tags=["service:snaplogic"])
+
+      self.gauge(name='snaplogic.runtime.successful_pipelines', value=successful_pipelines, tags=["service:snaplogic"])
+
     else:
-      raise Exception("check_type '{}' not known".format(key))
+      raise Exception("check_type '{}' not known".format(check_type))
 
 
