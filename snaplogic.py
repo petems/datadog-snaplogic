@@ -151,6 +151,16 @@ class SnaplogicTest(AgentCheck):
 
         snaplogic_pipelines = data["response_map"]["entries"]
 
+        if not snaplogic_pipelines:
+          self.log.debug("No Pipeline in {state} found".format(state=non_failed_state))  
+          pass
+
+        self.log.debug("- RESPONSE DEBUG START - ")
+
+        self.log.debug(snaplogic_pipelines)
+
+        self.log.debug("- RESPONSE DEBUG END - ")
+
         for pipeline_response in snaplogic_pipelines:
     
           for tag_name in tags_array:
@@ -180,6 +190,16 @@ class SnaplogicTest(AgentCheck):
         data = json.loads(response.data)
 
         snaplogic_pipelines = data["response_map"]["entries"]
+
+        if not snaplogic_pipelines:
+          self.log.debug("No Pipeline in {state} found".format(state=failed_state))  
+          pass
+
+        self.log.debug("- RESPONSE DEBUG START - ")
+
+        self.log.debug(snaplogic_pipelines)
+
+        self.log.debug("- RESPONSE DEBUG END - ")
 
         for pipeline_response in snaplogic_pipelines:
     
