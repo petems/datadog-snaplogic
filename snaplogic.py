@@ -80,7 +80,7 @@ class SnaplogicTest(AgentCheck):
 
         tags_list["snaplogic_alive_since_string"] = datetime.datetime.fromtimestamp(project["stats"]["alive_since"]/1000.0).strftime('%Y-%m-%d %H:%M:%S')
 
-        stats_metrics = ["active_threads", "active_pipelines", "alive_since", "mem_used", "cpu_user", "max_file_descriptors", "cpu_util", "cc_mem_total", "mem_used_absolute", "disk_free", "disk_total"]
+        stats_metrics = ["active_threads", "active_pipelines", "alive_since", "mem_used", "cpu_user", "leased_slots", "max_file_descriptors", "cpu_util", "cc_mem_total", "mem_used_absolute", "disk_free", "disk_total"]
         stats_metric_kv = {}
         for metric_name in stats_metrics:
           metric_string = 'snaplogic.cc_info.{metric_name}'.format(metric_name = metric_name)
