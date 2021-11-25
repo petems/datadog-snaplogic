@@ -50,6 +50,7 @@ class SnaplogicAlerts(AgentCheck):
     headers = urllib3.make_headers(basic_auth=basic_auth_string)
 
     failing_states = ["Failing", "Failed", "Suspended", "Suspending"]
+    success_states = ["Queued","NoUpdate","Prepared","Started","Completed","Stopped","Stopping","Resuming"]
     # Response Example: https://docs-snaplogic.atlassian.net/wiki/spaces/SD/pages/1438155/Pipeline+Monitoring+API
     # {
     #                 "pipe_id": "29cd6375-b460-4456-8fa7-08a85756394f",
@@ -81,8 +82,70 @@ class SnaplogicAlerts(AgentCheck):
 
     tags_list = {}
 
+    for success_state in success_states:
+      success_state_url = full_url + "&state={success_state}".format(success_state=success_state)
+
+      response = http.request('GET', success_state_url, headers = headers)
+
+      self._check_connection(response)
+
+      if response.status != 200:
+        return
+
+      data = json.loads(response.data)
+      snaplogic_pipelines = data["response_map"]["entries"]
+
+      if not snaplogic_pipelines:
+        self.log.debug("No Pipeline in {state} found".format(state=success_state))
+        pass
+
+      for pipeline_response in snaplogic_pipelines:
+
+        runtime_url = "https://" + snaplogic_url + "/api/1/rest/public/runtime/" + orgname + '/' + pipeline_response["id"] + '?level=detail'
+
+        runtime_detail_response = http.request('GET', runtime_url, headers = headers)
+
+        self._check_connection(runtime_detail_response)
+
+        if response.status != 200:
+          return
+
+        runtime_detail_response_data = json.loads(runtime_detail_response.data)
+
+        snap_map_id_to_error = []
+
+        for tag in tags_array:
+          tags_list[tag] = pipeline_response[tag]
+
+        tags = self.dict_to_string_tags(tags_list)
+
+        runtime_metrics = ["documents", "duration"]
+        runtime_metric_kv = {}
+        for metric_name in runtime_metrics:
+          metric_string = 'snaplogic.runtime.{metric_name}'.format(metric_name = metric_name)
+          metric_value = pipeline_response[metric_name]
+          runtime_metric_kv[metric_string] = metric_value
+        
+        for key, value in runtime_metric_kv.items():
+          self.gauge(name=key, value=value, tags=tags)
+
+      total_count_url = "https://" + snaplogic_url + "/api/1/rest/public/runtime/" + orgname + "?level=summary&last_hours=1&limit=1"
+
+      headers = urllib3.make_headers(basic_auth=basic_auth_string)
+
+      total_count_response = http.request('GET', success_state_url, headers = headers)
+
+      total_count_data = json.loads(total_count_response.data)
+
+      total_count = total_count_data["response_map"]["total"]
+
+      total_metric_string = 'snaplogic.runtime.{success_state}'.format(success_state = success_state)
+
+      self.gauge(name=total_metric_string, value=total_count, tags=["orgname={orgname}".format(orgname=orgname)])
+
     for failed_state in failing_states:
       failed_state_url = full_url + "&state={failed_state}".format(failed_state=failed_state)
+
       response = http.request('GET', failed_state_url, headers = headers)
 
       self._check_connection(response)
@@ -124,6 +187,8 @@ class SnaplogicAlerts(AgentCheck):
             )
             snap_map_id_to_error.append(context_string)
 
+        tags = self.dict_to_string_tags(tags_list)
+        
         self.event({
           'timestamp': int(time.time()),
           'event_type': 'Snaplogic',
@@ -132,7 +197,31 @@ class SnaplogicAlerts(AgentCheck):
               label=pipeline_response["label"],
               failed_state=pipeline_response["state"],
           ),
-          'tags': self.dict_to_string_tags(tags_list),
+          'tags': tags,
           'msg_text': '\n'.join(snap_map_id_to_error),
           'aggregation_key': pipeline_response["pipe_id"],
         })
+
+        runtime_metrics = ["documents", "duration"]
+        runtime_metric_kv = {}
+        for metric_name in runtime_metrics:
+          metric_string = 'snaplogic.runtime.{metric_name}'.format(metric_name = metric_name)
+          metric_value = pipeline_response[metric_name]
+          runtime_metric_kv[metric_string] = metric_value
+        
+        for key, value in runtime_metric_kv.items():
+          self.gauge(name=key, value=value, tags=tags)
+
+      total_count_url = "https://" + snaplogic_url + "/api/1/rest/public/runtime/" + orgname + "?level=summary&last_hours=1&limit=1"
+
+      headers = urllib3.make_headers(basic_auth=basic_auth_string)
+
+      total_count_response = http.request('GET', failed_state_url, headers = headers)
+
+      total_count_data = json.loads(total_count_response.data)
+
+      total_count = total_count_data["response_map"]["total"]
+
+      total_metric_string = 'snaplogic.runtime.{failed_state}'.format(failed_state = failed_state)
+
+      self.gauge(name=total_metric_string, value=total_count, tags=["orgname={orgname}".format(orgname=orgname)])
