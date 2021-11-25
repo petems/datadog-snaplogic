@@ -112,6 +112,9 @@ class SnaplogicAlerts(AgentCheck):
 
         snap_map_id_to_error = []
 
+        for tag in tags_array:
+          tags_list[tag] = pipeline_response[tag]
+
         for key, snap_map in runtime_detail_response_data["response_map"]["snap_map"].items():
           if snap_map["state"] == "Failed":
             context_string = "Pipeline ID: {key}\nSnap Map Error: {failure}\nSuggested Resolution: {resolution}".format(
